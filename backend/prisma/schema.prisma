@@ -28,6 +28,9 @@ model User {
 
   refreshTokens    RefreshToken[]
   passwordHistory  PasswordHistory[]
+  userProgress     UserProgress[]
+  userAchievements UserAchievement[]
+  chatHistory      ChatMessage[]
 
   @@index([email])
   @@index([username])
@@ -59,4 +62,94 @@ model PasswordHistory {
 
   @@index([userId])
   @@map("password_history")
+}
+
+model Problem {
+  id               String   @id @default(cuid())
+  type             String   // vocabulary, grammar, reading, writing
+  category         String?  // synonym, antonym, main_idea, etc.
+  difficulty       String   // easy, medium, hard
+  level            Int      // 1, 2, 3, 4
+  subLevel         String?  @map("sub_level") // 4-1, 4-2, 4-3, 4-4
+  question         String   @db.Text
+  passage          String?  @db.Text
+  options          Json?    // ["option1", "option2", ...]
+  answer           String   @db.Text
+  explanation      String   @db.Text
+  source           String?
+  curriculumMapping String? @map("curriculum_mapping")
+  timeLimitSeconds Int?     @map("time_limit_seconds")
+  difficultyRating Int?     @map("difficulty_rating") // 1-5
+  tags             String[] // ["문법", "비음화", ...]
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  userProgress UserProgress[]
+
+  @@index([level])
+  @@index([type])
+  @@index([difficulty])
+  @@map("problems")
+}
+
+model UserProgress {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  problemId    String   @map("problem_id")
+  isCorrect    Boolean  @map("is_correct")
+  userAnswer   String?  @map("user_answer") @db.Text
+  attemptCount Int      @default(1) @map("attempt_count")
+  timeSpent    Int?     @map("time_spent") // seconds
+  attemptedAt  DateTime @default(now()) @map("attempted_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([problemId])
+  @@index([attemptedAt])
+  @@map("user_progress")
+}
+
+model Achievement {
+  id          String   @id @default(cuid())
+  code        String   @unique // vocab_master, grammar_king, etc.
+  name        String
+  description String   @db.Text
+  icon        String?
+  condition   Json     // {"type": "problem_count", "category": "vocabulary", "count": 100}
+  points      Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  userAchievements UserAchievement[]
+
+  @@map("achievements")
+}
+
+model UserAchievement {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  achievementId String   @map("achievement_id")
+  unlockedAt    DateTime @default(now()) @map("unlocked_at")
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+  @@index([userId])
+  @@map("user_achievements")
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  role      String   // user, assistant
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("chat_messages")
 }

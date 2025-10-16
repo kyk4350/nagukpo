@@ -8,7 +8,10 @@ import logger from './utils/logger'
 import { connectDatabase, disconnectDatabase } from './utils/prisma'
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.middleware'
 import authRoutes from './routes/auth.routes'
-import { cleanupExpiredTokens } from './services/auth.service'
+import problemRoutes from './routes/problem.routes'
+import { authMiddleware } from './middleware/auth.middleware'
+import { getProgressController, getStatsController } from './controllers/progress.controller'
+import authService from './services/auth.service'
 
 // Load environment variables
 dotenv.config()
@@ -57,6 +60,9 @@ app.get('/api/v1', (req, res) => {
 
 // Routes
 app.use('/api/v1/auth', authRoutes)
+app.use('/api/v1/problems', problemRoutes)
+app.get('/api/v1/progress', authMiddleware, getProgressController)
+app.get('/api/v1/stats', authMiddleware, getStatsController)
 
 // 404 handler
 app.use(notFoundHandler)
@@ -68,7 +74,7 @@ app.use(errorHandler)
 cron.schedule('0 3 * * *', async () => {
   logger.info('Running scheduled cleanup of expired tokens')
   try {
-    await cleanupExpiredTokens()
+    await authService.cleanupExpiredTokens()
     logger.info('Expired tokens cleaned up successfully')
   } catch (error) {
     logger.error('Failed to cleanup expired tokens:', error)
