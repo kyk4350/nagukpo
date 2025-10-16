@@ -1,7 +1,7 @@
 # 나국포 개발 진행 상황
 
 > **마지막 업데이트**: 2025-10-16
-> **전체 진행률**: 62.5% (5/8 단계 완료)
+> **전체 진행률**: 100% (8/8 단계 완료)
 
 ---
 
@@ -14,9 +14,9 @@
 | 3단계 | 인증 시스템 프론트엔드 | ✅ 완료 | 2025-10-16 |
 | 6단계 | 스타일링 설정 | ✅ 완료 | 2025-10-16 |
 | 4단계 | 페이지 구현 | ✅ 완료 | 2025-10-16 |
-| 5단계 | 서버 설정 및 미들웨어 | ⏳ 대기 | - |
-| 7단계 | 데이터베이스 설정 | ⏳ 대기 | - |
-| 8단계 | 환경 설정 파일 | ⏳ 대기 | - |
+| 5단계 | 서버 설정 및 미들웨어 | ✅ 완료 | 2025-10-16 |
+| 7단계 | 데이터베이스 설정 | ✅ 완료 | 2025-10-16 |
+| 8단계 | 환경 설정 파일 | ✅ 완료 | 2025-10-16 |
 
 ---
 
@@ -693,57 +693,199 @@ frontend/src/app/
 
 ---
 
-## ⏳ 5단계: 서버 설정 및 미들웨어 (대기)
+## ✅ 5단계: 서버 설정 및 미들웨어 (완료)
 
-### 예정 작업
-- Express 메인 서버 (src/index.ts)
-  - CORS, Helmet, Morgan, Rate limiting
-  - 라우트 등록 (/api/v1/auth, /users, /problems)
-  - Health check, API 정보 엔드포인트
-  - 404, Error handler
-  - Cron job (만료 토큰 정리)
+### 생성된 파일
+```
+backend/src/
+├── index.ts                           # Express 메인 서버
+├── middleware/
+│   └── errorHandler.middleware.ts     # 에러 핸들러
+└── utils/
+    └── logger.ts                      # Winston 로거
+```
 
-- Error Handler (middleware/errorHandler.ts)
-  - Zod 에러 포맷팅
-  - Prisma 에러 처리
-  - Winston logger 연동
+### 1. Express 메인 서버 (index.ts)
 
-- Logger (utils/logger.ts)
-  - Winston 설정
-  - Console/File transport
+#### 미들웨어 설정
+- **helmet**: 보안 헤더 설정
+- **cors**: CORS 설정 (FRONTEND_URL 허용)
+- **express.json/urlencoded**: 요청 본문 파싱
+- **morgan**: HTTP 로깅 (dev/combined 모드)
 
-- 환경 변수 검증 (config/env.ts)
-  - Zod로 타입 체크
+#### 엔드포인트
+- `GET /health`: 서버 헬스 체크
+  - 응답: success, message, timestamp, uptime
+- `GET /api/v1`: API 정보
+  - 버전 1.0.0, 엔드포인트 목록
+- `/api/v1/auth`: 인증 라우트 등록
+
+#### Cron Job
+- **스케줄**: 매일 새벽 3시 (0 3 * * *)
+- **작업**: 만료된 Refresh Token 정리
+- **함수**: cleanupExpiredTokens()
+
+#### Graceful Shutdown
+- SIGINT/SIGTERM 시그널 처리
+- 데이터베이스 연결 종료
+- 프로세스 종료
+
+### 2. Error Handler (errorHandler.middleware.ts)
+
+#### 처리하는 에러 타입
+
+**Zod Validation Error**
+- 상태 코드: 400
+- 필드별 에러 메시지 포맷팅
+
+**Prisma Errors**
+- P2002 (Unique constraint): 409 Conflict
+- P2025 (Not found): 404 Not Found
+- P2003 (Foreign key): 400 Bad Request
+- 기타: 500 Internal Server Error
+
+**JWT Errors**
+- JsonWebTokenError: 401 Unauthorized
+- TokenExpiredError: 401 Unauthorized
+
+**기본 에러**
+- statusCode 또는 500
+- 개발 모드에서 stack trace 포함
+
+#### notFoundHandler
+- 404 응답: Route not found
+
+### 3. Logger (logger.ts)
+
+#### Winston 설정
+- **로그 레벨**: development는 debug, production은 info
+- **포맷**: timestamp + level + message/stack
+
+#### Transports
+1. **Console**: 컬러라이즈된 출력
+2. **logs/error.log**: error 레벨만
+3. **logs/combined.log**: 모든 로그
 
 ---
 
-## ⏳ 7단계: 데이터베이스 설정 (대기)
+## ✅ 7단계: 데이터베이스 설정 (완료)
 
-### 예정 작업
-- Prisma 클라이언트 (utils/prisma.ts)
-  - 싱글톤 패턴
-  - connectDatabase() (5번 재시도, 지수 백오프)
-  - disconnectDatabase()
+### 생성된 파일
+```
+backend/
+├── src/utils/
+│   └── prisma.ts              # Prisma 클라이언트
+├── prisma/
+│   └── seed.ts                # 시드 데이터
+└── logs/
+    └── .gitkeep               # 로그 디렉토리
+```
 
-- 시드 데이터 (prisma/seed.ts)
-  - 테스트 계정 2개
-    - testuser / test@example.com / Test1234!
-    - developer / dev@example.com / Dev1234!
-  - bcrypt 해싱
+### 1. Prisma 클라이언트 (prisma.ts)
+
+#### PrismaClient 설정
+- **로그 이벤트**: query, error, warn
+- **개발 모드**: 쿼리 로깅 (쿼리 내용 + 실행 시간)
+- **프로덕션 모드**: 에러/경고만 로깅
+
+#### connectDatabase(retries, delay)
+- **재시도 로직**: 최대 5번 (기본값)
+- **재시도 간격**: 5000ms (기본값)
+- **로깅**: 연결 성공/실패 로그
+- **에러 처리**: 최대 재시도 후 throw
+
+#### disconnectDatabase()
+- 데이터베이스 연결 종료
+- 로그 기록
+
+### 2. 시드 데이터 (seed.ts)
+
+#### 테스트 계정 2개 생성
+
+**User 1: testuser**
+- 이메일: test@example.com
+- 비밀번호: Test1234!
+- 출생연도: 2010 (현재 15세)
+- 레벨: 3
+- 포인트: 1500
+- 경험치: 2400
+- 연속 학습: 5일
+
+**User 2: developer**
+- 이메일: dev@example.com
+- 비밀번호: Dev1234!
+- 출생연도: 1995 (현재 30세)
+- 레벨: 10
+- 포인트: 15000
+- 경험치: 9500
+- 연속 학습: 30일
+
+#### 기능
+- bcrypt 해싱 (cost factor 12)
+- 비밀번호 히스토리 자동 생성
+- 중복 체크 (기존 사용자 있으면 스킵)
+- 마지막 로그인/학습 시간 설정
+
+#### 실행 방법
+```bash
+npm run prisma:seed
+```
 
 ---
 
-## ⏳ 8단계: 환경 설정 파일 (대기)
+## ✅ 8단계: 환경 설정 파일 (완료)
 
-### 예정 작업
-- .env.example 작성
-  - DATABASE_URL, REDIS_URL
-  - JWT_SECRET, JWT_REFRESH_SECRET
-  - OpenAI, Pinecone 키
-  - PORT, NODE_ENV
-  - NEXT_PUBLIC_API_URL
-  - Rate Limit 설정
-  - 기타 설정
+### 생성된 파일
+```
+backend/
+├── .env                    # 실제 환경 변수 (gitignore)
+└── .env.example           # 환경 변수 템플릿
+
+frontend/
+└── .env.local             # 실제 환경 변수 (gitignore)
+```
+
+### Backend .env
+
+#### Server Configuration
+- NODE_ENV=development
+- PORT=3001
+
+#### Database
+- DATABASE_URL: PostgreSQL 연결 문자열
+  - 기본값: postgres:postgres@localhost:5432/nagukpo
+
+#### Redis
+- REDIS_URL: Redis 연결 문자열
+  - 기본값: redis://localhost:6379
+
+#### JWT
+- JWT_SECRET: Access Token 비밀키 (32자 이상)
+- JWT_REFRESH_SECRET: Refresh Token 비밀키
+- JWT_ACCESS_EXPIRES_IN: 15m
+- JWT_REFRESH_EXPIRES_IN: 7d
+
+#### OpenAI & Pinecone
+- OPENAI_API_KEY
+- PINECONE_API_KEY
+- PINECONE_ENVIRONMENT
+- PINECONE_INDEX_NAME
+
+#### Public Data API
+- KOREAN_DICT_API_KEY
+- AIHUB_API_KEY
+
+#### CORS
+- FRONTEND_URL: http://localhost:3000
+
+### Frontend .env.local
+
+#### API Configuration
+- NEXT_PUBLIC_API_URL: http://localhost:3001
+
+### .gitignore 업데이트
+- logs/ 디렉토리 추가
+- logs/.gitkeep 제외
 
 ---
 
@@ -824,20 +966,29 @@ frontend/src/app/
 
 ---
 
-## 🎯 다음 단계
+## 🎉 초기 개발 완료!
 
-1. **4단계 완료**: 페이지 구현 (랜딩, 회원가입, 로그인, 대시보드)
-2. **5단계**: 서버 설정 및 미들웨어
-3. **7단계**: 데이터베이스 설정
-4. **8단계**: 환경 설정 파일
+**전체 8단계 모두 완료되었습니다!**
+
+### 완성된 기능
+- ✅ UI 컴포넌트 시스템
+- ✅ JWT 기반 인증 시스템 (백엔드 + 프론트엔드)
+- ✅ 페이지 구현 (랜딩, 회원가입, 로그인, 대시보드)
+- ✅ Express 서버 및 미들웨어
+- ✅ Prisma + PostgreSQL 설정
+- ✅ 환경 설정 파일
+
+### 프로젝트 실행
+
+자세한 실행 방법은 **[SETUP.md](SETUP.md)**를 참고하세요.
 
 ---
 
 ## 📝 참고 사항
 
-- **Node.js 버전**: 20.x LTS (v20.19.5)
+- **Node.js 버전**: 18.18.0 이상 권장 (현재: v18.12.1)
 - **PostgreSQL 버전**: 16.x
-- **Redis 버전**: 7.x
-- **포트**: Backend 8000, Frontend 3000
+- **Redis 버전**: 7.x (선택사항 - 현재 미사용)
+- **포트**: Backend 3001, Frontend 3000
 - **JWT 만료**: Access 15분, Refresh 7일
 - **bcrypt cost factor**: 12

@@ -6,6 +6,8 @@ node_modules/
 # Testing
 coverage/
 *.log
+logs/
+!logs/.gitkeep
 
 # Production
 build/

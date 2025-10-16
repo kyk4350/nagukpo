@@ -5,7 +5,7 @@ import { LoginCredentials, RegisterData, AuthResponse, User, ApiResponse } from 
  * 회원가입
  */
 export async function register(data: RegisterData): Promise<AuthResponse> {
-  const response = await apiClient.post<ApiResponse<AuthResponse>>('/auth/register', data)
+  const response = await apiClient.post<ApiResponse<AuthResponse>>('/api/v1/auth/register', data)
 
   if (response.data.success && response.data.data) {
     // 토큰 저장
@@ -20,7 +20,7 @@ export async function register(data: RegisterData): Promise<AuthResponse> {
  * 로그인
  */
 export async function login(credentials: LoginCredentials): Promise<AuthResponse> {
-  const response = await apiClient.post<ApiResponse<AuthResponse>>('/auth/login', credentials)
+  const response = await apiClient.post<ApiResponse<AuthResponse>>('/api/v1/auth/login', credentials)
 
   if (response.data.success && response.data.data) {
     // 토큰 저장
@@ -36,7 +36,7 @@ export async function login(credentials: LoginCredentials): Promise<AuthResponse
  */
 export async function logout(refreshToken: string): Promise<void> {
   try {
-    await apiClient.post('/auth/logout', { refreshToken })
+    await apiClient.post('/api/v1/auth/logout', { refreshToken })
   } finally {
     // 실패해도 로컬 토큰은 삭제
     setTokens(null)
@@ -47,7 +47,7 @@ export async function logout(refreshToken: string): Promise<void> {
  * Access Token 갱신
  */
 export async function refreshAccessToken(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
-  const response = await apiClient.post<ApiResponse<{ tokens: { accessToken: string; refreshToken: string } }>>('/auth/refresh', {
+  const response = await apiClient.post<ApiResponse<{ tokens: { accessToken: string; refreshToken: string } }>>('/api/v1/auth/refresh', {
     refreshToken
   })
 
@@ -64,7 +64,7 @@ export async function refreshAccessToken(refreshToken: string): Promise<{ access
  * 현재 사용자 정보 조회
  */
 export async function getCurrentUser(): Promise<User> {
-  const response = await apiClient.get<ApiResponse<{ user: User }>>('/auth/me')
+  const response = await apiClient.get<ApiResponse<{ user: User }>>('/api/v1/auth/me')
 
   if (response.data.success && response.data.data) {
     return response.data.data.user

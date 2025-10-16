@@ -5,9 +5,9 @@ import authService from '../services/auth.service'
 // Zod 검증 스키마
 const registerSchema = z.object({
   username: z.string()
-    .min(3, '사용자명은 최소 3자 이상이어야 합니다')
+    .min(2, '사용자명은 최소 2자 이상이어야 합니다')
     .max(20, '사용자명은 최대 20자까지 가능합니다')
-    .regex(/^[a-zA-Z0-9_]+$/, '사용자명은 영문, 숫자, 언더스코어만 가능합니다'),
+    .regex(/^[a-zA-Z0-9가-힣_]+$/, '사용자명은 영문, 한글, 숫자, 언더스코어만 가능합니다'),
   email: z.string().email('올바른 이메일 형식이 아닙니다'),
   password: z.string()
     .min(8, '비밀번호는 최소 8자 이상이어야 합니다')
@@ -19,7 +19,10 @@ const registerSchema = z.object({
     .int('출생년도는 정수여야 합니다')
     .min(1900, '출생년도는 1900년 이상이어야 합니다')
     .max(new Date().getFullYear(), '출생년도는 현재 연도 이하여야 합니다'),
-  parentEmail: z.string().email('올바른 이메일 형식이 아닙니다').optional()
+  parentEmail: z.union([
+    z.string().email('올바른 이메일 형식이 아닙니다'),
+    z.literal('')
+  ]).optional()
 })
 
 const loginSchema = z.object({
