@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useProblems } from '@/hooks/queries/useProblems'
 import { useSubmitAnswer } from '@/hooks/queries/useSubmitAnswer'
+import { queryClient } from '@/lib/queryClient'
+import { queryKeys } from '@/lib/queryKeys'
 import type { SubmitAnswerResponse } from '@/types/problem'
 
 export default function LevelPage() {
@@ -48,8 +50,7 @@ export default function LevelPage() {
         onSuccess: (response) => {
           setResult(response)
           setSubmitted(true)
-          // 답안 제출 후 문제 목록 갱신
-          refetch()
+          // refetch 제거 - 다음 문제로 넘어갈 때만 갱신
         },
         onError: (error) => {
           console.error('답안 제출 실패:', error)
@@ -61,12 +62,20 @@ export default function LevelPage() {
 
   const handleNext = () => {
     if (currentIndex < problems.length - 1) {
+      // 다음 문제로 이동
       setCurrentIndex(currentIndex + 1)
       setSelectedAnswer('')
       setSubmitted(false)
       setResult(null)
+
+      // 진도와 통계만 업데이트 (문제 목록은 그대로 유지)
+      queryClient.invalidateQueries({ queryKey: queryKeys.progress.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.current })
     } else {
-      // 모든 문제 완료
+      // 모든 문제 완료 - 프리셋 페이지로 돌아가기 전 모든 쿼리 갱신
+      queryClient.invalidateQueries({ queryKey: queryKeys.problems.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.progress.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.current })
       router.push('/preset')
     }
   }
@@ -225,12 +234,24 @@ export default function LevelPage() {
                 제출하기
               </button>
             ) : (
-              <button
-                onClick={handleNext}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold"
-              >
-                {currentIndex < problems.length - 1 ? '다음 문제' : '완료'}
-              </button>
+              <>
+                {!result?.isCorrect && (
+                  <button
+                    onClick={() => {
+                      window.open(`/chat?problemId=${currentProblem.id}`, '_blank')
+                    }}
+                    className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold"
+                  >
+                    설명 듣기 💬
+                  </button>
+                )}
+                <button
+                  onClick={handleNext}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold"
+                >
+                  {currentIndex < problems.length - 1 ? '다음 문제' : '완료'}
+                </button>
+              </>
             )}
           </div>
         </div>
