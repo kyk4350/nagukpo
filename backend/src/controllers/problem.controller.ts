@@ -13,6 +13,8 @@ export async function getProblemsController(req: Request, res: Response, next: N
     const difficulty = req.query.difficulty as string | undefined
     const limit = req.query.limit ? parseInt(req.query.limit as string) : 20
     const offset = req.query.offset ? parseInt(req.query.offset as string) : 0
+    const excludeSolved = req.query.excludeSolved === 'true'
+    const userId = (req as any).user?.userId
 
     const result = await problemService.getProblems({
       level,
@@ -20,6 +22,8 @@ export async function getProblemsController(req: Request, res: Response, next: N
       difficulty,
       limit,
       offset,
+      excludeSolved,
+      userId,
     })
 
     res.status(200).json({

@@ -10,6 +10,9 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
     // Authorization 헤더 확인
     const authHeader = req.headers.authorization
 
+    // 디버깅용 로그
+    console.log('[Auth Middleware] Headers:', JSON.stringify(req.headers, null, 2))
+
     if (!authHeader) {
       return res.status(401).json({
         success: false,
@@ -28,14 +31,20 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
 
     const token = parts[1]
 
+    console.log('[Auth Middleware] Token extracted:', token)
+    console.log('[Auth Middleware] JWT_SECRET:', process.env.JWT_SECRET)
+
     // 토큰 검증
     const payload = authService.verifyAccessToken(token)
+
+    console.log('[Auth Middleware] Token verified! Payload:', payload)
 
     // req에 사용자 정보 추가
     ;(req as any).user = payload
 
     next()
   } catch (error) {
+    console.log('[Auth Middleware] Token verification error:', error)
     if (error instanceof Error) {
       return res.status(401).json({
         success: false,

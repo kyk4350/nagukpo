@@ -7,23 +7,25 @@ import Button from '@/components/Button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/Card'
 import Badge from '@/components/Badge'
 import { useAuthStore } from '@/stores/authStore'
+import { useCurrentUser } from '@/hooks/queries/useCurrentUser'
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { user, isAuthenticated, logout, fetchCurrentUser, isLoading } = useAuthStore()
+  const { isAuthenticated, logout, _hasHydrated } = useAuthStore()
+
+  // React Query 사용: 현재 사용자 정보 조회
+  const { data: user, isLoading } = useCurrentUser()
 
   useEffect(() => {
+    // Zustand persist가 rehydrate될 때까지 대기
+    if (!_hasHydrated) return
+
     // 인증되지 않은 경우 로그인 페이지로 리다이렉트
     if (!isAuthenticated) {
       router.push('/login')
       return
     }
-
-    // 사용자 정보가 없으면 가져오기
-    if (!user) {
-      fetchCurrentUser()
-    }
-  }, [isAuthenticated, user, router, fetchCurrentUser])
+  }, [_hasHydrated, isAuthenticated, router])
 
   const handleLogout = async () => {
     await logout()
@@ -161,16 +163,36 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Button variant="primary" size="lg" className="w-full">
-                    📝 오늘의 문제 풀기
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    className="w-full"
+                    onClick={() => router.push('/preset')}
+                  >
+                    📝 프리셋 학습 시작
                   </Button>
-                  <Button variant="secondary" size="lg" className="w-full">
+                  <Button
+                    variant="secondary"
+                    size="lg"
+                    className="w-full"
+                    onClick={() => router.push('/chat')}
+                  >
                     💬 AI 선생님과 대화
                   </Button>
-                  <Button variant="outline" size="lg" className="w-full">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="w-full"
+                    onClick={() => alert('학습 분석 기능은 준비 중입니다!')}
+                  >
                     📊 학습 분석 보기
                   </Button>
-                  <Button variant="outline" size="lg" className="w-full">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="w-full"
+                    onClick={() => alert('랭킹 기능은 준비 중입니다!')}
+                  >
                     🏆 랭킹 확인
                   </Button>
                 </div>
@@ -222,7 +244,11 @@ export default function DashboardPage() {
                   </p>
                 </div>
 
-                <Button variant="outline" className="w-full">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => alert('프로필 수정 기능은 준비 중입니다!')}
+                >
                   프로필 수정
                 </Button>
               </CardContent>
@@ -243,8 +269,8 @@ export default function DashboardPage() {
                       <span className="text-2xl">🏅</span>
                     </div>
                     <div>
-                      <p className="font-semibold text-sm">첫 문제 해결</p>
-                      <p className="text-xs text-gray-500">1일 전</p>
+                      <p className="font-semibold text-sm">회원가입 완료</p>
+                      <p className="text-xs text-gray-500">최근</p>
                     </div>
                   </div>
 
@@ -253,13 +279,17 @@ export default function DashboardPage() {
                       <span className="text-2xl">🔥</span>
                     </div>
                     <div>
-                      <p className="font-semibold text-sm">3일 연속 학습</p>
+                      <p className="font-semibold text-sm">{user.streakDays}일 연속 학습</p>
                       <p className="text-xs text-gray-500">오늘</p>
                     </div>
                   </div>
                 </div>
 
-                <Button variant="ghost" className="w-full mt-4">
+                <Button
+                  variant="ghost"
+                  className="w-full mt-4"
+                  onClick={() => alert('배지 기능은 준비 중입니다!')}
+                >
                   전체 배지 보기
                 </Button>
               </CardContent>

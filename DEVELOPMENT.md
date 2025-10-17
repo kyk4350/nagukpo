@@ -20,9 +20,12 @@ nagukpo/
 │   ├── src/
 │   │   ├── app/                   # Next.js 14 App Router
 │   │   ├── components/            # React 컴포넌트
+│   │   │   └── providers/         # Context Provider 컴포넌트
 │   │   ├── hooks/                 # 커스텀 React 훅
+│   │   │   └── queries/           # React Query 훅
 │   │   ├── stores/                # Zustand 상태 관리
 │   │   ├── lib/                   # 유틸리티 함수
+│   │   │   └── api/               # API 클라이언트
 │   │   └── types/                 # TypeScript 타입 정의
 │   ├── public/                    # 정적 파일
 │   ├── package.json               # 의존성 관리
@@ -100,11 +103,19 @@ nagukpo/
   - 정적 타입 시스템
   - 개발 시 타입 안전성 보장
 
-#### 상태 관리 & 데이터 시각화
+#### 상태 관리 & 데이터 페칭
 - **Zustand 4.5.0**
-  - 경량 상태 관리 라이브러리
+  - 클라이언트 상태 관리
   - Redux보다 간단한 API
+  - 인증 상태 관리
 
+- **TanStack Query (React Query) 5.x**
+  - 서버 상태 관리
+  - 자동 캐싱 및 리페칭
+  - 로딩/에러 상태 자동 관리
+  - Optimistic Updates 지원
+
+#### 데이터 시각화
 - **Recharts 2.12.0**
   - 학습 진도 및 통계 차트
   - React 컴포넌트 기반
@@ -273,20 +284,35 @@ nagukpo/
 - ~~Styled Components~~: 런타임 오버헤드, 번들 크기 증가
 - ~~MUI~~: 디자인 커스터마이징 제한
 
-#### 4. Zustand
+#### 4. TanStack Query (React Query)
 **선정 이유:**
+- **서버 상태 전문**: API 데이터 페칭, 캐싱, 동기화에 최적화
+- **자동 캐싱**: staleTime, cacheTime으로 불필요한 요청 제거
+- **중복 요청 방지**: 동일한 쿼리키는 한 번만 실행
+- **Optimistic Updates**: 사용자 경험 개선 (즉각적인 UI 반응)
+- **로딩/에러 자동 관리**: useState/useEffect 보일러플레이트 제거
+- **Background Refetch**: 창 포커스 시 자동 데이터 갱신
+- **Next.js SSR 지원**: Hydration을 통한 서버 데이터 전달
+
+**대안 비교:**
+- ~~SWR~~: 기능 부족, Optimistic Update 지원 약함
+- ~~직접 구현~~: 캐싱, 리페칭 로직 복잡, 휠 재발명
+
+#### 5. Zustand
+**선정 이유:**
+- **클라이언트 상태 전문**: 인증, UI 상태 등 비서버 상태 관리
 - **경량**: Redux보다 10배 작은 번들 크기 (1KB)
 - **간단한 API**: Boilerplate 최소화
 - **TypeScript 지원**: 완벽한 타입 추론
 - **React 18 호환**: Concurrent 렌더링 지원
-- **학습 곡선**: 5분 내 학습 가능
+- **React Query와 분리**: 관심사 분리 (서버 상태 vs 클라이언트 상태)
 
 **대안 비교:**
 - ~~Redux Toolkit~~: 복잡한 설정, Boilerplate 많음
 - ~~Recoil~~: Meta 프로젝트, 장기 지원 불확실
 - ~~Context API~~: 성능 이슈, 리렌더링 최적화 어려움
 
-#### 5. Recharts
+#### 6. Recharts
 **선정 이유:**
 - **React 통합**: 선언적 컴포넌트 API
 - **커스터마이징**: 학습 진도, 약점 분석 차트 구현 용이
@@ -354,7 +380,35 @@ nagukpo/
 - **최신 정보**: 교육과정 변경 사항 반영
 - **출처 제공**: 학습 자료 출처 명시로 신뢰도 향상
 
-#### 6. Zod
+#### 6. TanStack Query (React Query)
+**선정 이유:**
+- **서버 상태 전문**: API 데이터 페칭, 캐싱, 동기화에 최적화
+- **자동 캐싱**: staleTime, cacheTime으로 불필요한 요청 제거
+- **중복 요청 방지**: 동일한 쿼리키는 한 번만 실행
+- **Optimistic Updates**: 사용자 경험 개선 (즉각적인 UI 반응)
+- **로딩/에러 자동 관리**: useState/useEffect 보일러플레이트 제거
+- **Background Refetch**: 창 포커스 시 자동 데이터 갱신
+- **Next.js SSR 지원**: Hydration을 통한 서버 데이터 전달
+- **DevTools 제공**: 개발 환경에서 쿼리 상태 디버깅
+
+**대안 비교:**
+- ~~SWR~~: 기능 부족, Optimistic Update 지원 약함
+- ~~직접 구현~~: 캐싱, 리페칭 로직 복잡, 휠 재발명
+
+#### 7. Zustand
+**선정 이유:**
+- **클라이언트 상태 전문**: 인증, UI 상태 등 비서버 상태 관리
+- **경량**: Redux보다 10배 작은 번들 크기 (1KB)
+- **간단한 API**: Boilerplate 최소화
+- **TypeScript 지원**: 완벽한 타입 추론
+- **React 18 호환**: Concurrent 렌더링 지원
+- **React Query와 분리**: 관심사 분리 (서버 상태 vs 클라이언트 상태)
+
+**대안 비교:**
+- ~~Redux~~: 보일러플레이트 과다, 복잡한 설정
+- ~~Recoil~~: 메타 내부 도구, 불안정한 API
+
+#### 8. Zod
 **선정 이유:**
 - **런타임 검증**: API 요청/응답 데이터 검증
 - **TypeScript 통합**: 자동 타입 추론
@@ -414,7 +468,9 @@ export const GRADES = ['초등', '중등', '고등'] as const;
 
 ### 필수 요구사항
 
-- **Node.js**: 20.x LTS
+- **Node.js**: 20.19.5 (`.nvmrc` 파일에 명시)
+  - **중요**: Next.js 14는 Node.js v18.17.0 이상 필요
+  - nvm 사용 권장: `nvm use` 명령으로 자동 전환
 - **npm**: 10.x
 - **PostgreSQL**: 16.x
 - **Redis**: 7.x
@@ -428,7 +484,19 @@ git clone https://github.com/kyk4350/nagukpo.git
 cd nagukpo
 ```
 
-#### 2. 의존성 설치
+#### 2. Node.js 버전 설정 (nvm 사용 시)
+```bash
+# 프로젝트에 명시된 Node.js 버전 사용
+nvm use
+
+# 또는 명시적으로 v20.19.5 사용
+nvm use 20.19.5
+
+# 설치되지 않은 경우 설치
+nvm install 20.19.5
+```
+
+#### 3. 의존성 설치
 ```bash
 # 전체 워크스페이스 의존성 설치
 npm install
@@ -471,7 +539,9 @@ FRONTEND_URL=http://localhost:3000
 
 **프론트엔드 환경 변수** (`frontend/.env.local`)
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:3001
+# API Configuration
+# /api/v1 경로를 포함해야 합니다
+NEXT_PUBLIC_API_URL=http://localhost:3001/api/v1
 ```
 
 #### 4. 데이터베이스 설정
@@ -670,45 +740,54 @@ npm run dev
 
 ### API 엔드포인트 설계
 
+> **중요**: 모든 API 엔드포인트는 `/api/v1/` 접두사를 사용합니다. 자세한 규칙은 [CLAUDE.md](CLAUDE.md)를 참고하세요.
+
 #### 인증 (Authentication)
 ```
-POST   /api/auth/register      # 회원가입
-POST   /api/auth/login         # 로그인
-POST   /api/auth/logout        # 로그아웃
-POST   /api/auth/refresh       # 토큰 갱신
-GET    /api/auth/me            # 현재 사용자 정보
-```
-
-#### 사용자 (Users)
-```
-GET    /api/users/:id          # 사용자 정보 조회
-PATCH  /api/users/:id          # 사용자 정보 수정
-GET    /api/users/:id/progress # 학습 진도 조회
-GET    /api/users/:id/stats    # 학습 통계 조회
+POST   /api/v1/auth/signup     # 회원가입
+POST   /api/v1/auth/login      # 로그인
+POST   /api/v1/auth/logout     # 로그아웃
+POST   /api/v1/auth/refresh    # 토큰 갱신
+GET    /api/v1/auth/me         # 현재 사용자 정보 (인증 필요)
 ```
 
 #### 문제 (Problems)
 ```
-GET    /api/problems           # 문제 목록 조회 (페이징)
-GET    /api/problems/:id       # 문제 상세 조회
-POST   /api/problems/:id/solve # 문제 풀이 제출
-GET    /api/problems/random    # 랜덤 문제 추천
+GET    /api/v1/problems        # 문제 목록 조회
+                                # 쿼리 파라미터: level, type, page, limit
+GET    /api/v1/problems/:id    # 문제 상세 조회
+POST   /api/v1/problems/:id/submit  # 문제 풀이 제출 (인증 필요)
 ```
 
-#### 챗봇 (Chatbot)
+#### 진도/통계 (Progress & Stats)
 ```
-POST   /api/chat/message       # 메시지 전송
-GET    /api/chat/history       # 대화 기록 조회
-DELETE /api/chat/history       # 대화 기록 삭제
-POST   /api/chat/feedback      # 피드백 제출
+GET    /api/v1/progress        # 사용자 학습 진도 조회 (인증 필요)
+GET    /api/v1/stats           # 사용자 학습 통계 조회 (인증 필요)
 ```
 
-#### 프리셋 (Presets)
+#### 챗봇 (Chat)
 ```
-GET    /api/presets            # 프리셋 목록 조회
-GET    /api/presets/:id        # 프리셋 상세 조회
-POST   /api/presets/:id/start  # 프리셋 학습 시작
-GET    /api/presets/:id/progress # 프리셋 진도 조회
+POST   /api/v1/chat            # 챗봇에게 메시지 전송 (인증 필요)
+GET    /api/v1/chat/history    # 대화 히스토리 조회 (인증 필요)
+DELETE /api/v1/chat/history    # 대화 히스토리 삭제 (인증 필요)
+```
+
+#### 공통 응답 형식
+
+**성공 응답:**
+```json
+{
+  "success": true,
+  "data": { /* 실제 데이터 */ }
+}
+```
+
+**에러 응답:**
+```json
+{
+  "success": false,
+  "error": "에러 메시지"
+}
 ```
 
 ### 데이터베이스 스키마 설계 (Prisma)

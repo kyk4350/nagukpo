@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosError } from 'axios'
 import { AuthTokens } from '@/types'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'
 
 // Axios 인스턴스 생성
 const apiClient: AxiosInstance = axios.create({
@@ -9,7 +9,7 @@ const apiClient: AxiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json'
   },
-  timeout: 10000
+  timeout: 30000
 })
 
 // 토큰 저장/조회 함수
@@ -29,14 +29,14 @@ export function setTokens(newTokens: AuthTokens | null) {
 }
 
 export function getTokens(): AuthTokens | null {
-  if (typeof window !== 'undefined' && !tokens) {
+  if (typeof window !== 'undefined') {
     const accessToken = localStorage.getItem('accessToken')
     const refreshToken = localStorage.getItem('refreshToken')
     if (accessToken && refreshToken) {
-      tokens = { accessToken, refreshToken }
+      return { accessToken, refreshToken }
     }
   }
-  return tokens
+  return null
 }
 
 // 토큰 갱신 중인지 추적 (동시 요청 처리)
@@ -100,7 +100,7 @@ apiClient.interceptors.response.use(
       if (!currentTokens?.refreshToken) {
         // Refresh Token이 없으면 로그인 페이지로
         if (typeof window !== 'undefined') {
-          window.location.href = '/auth/login'
+          window.location.href = '/login'
         }
         return Promise.reject(error)
       }
@@ -129,7 +129,7 @@ apiClient.interceptors.response.use(
         processQueue(refreshError, null)
         setTokens(null)
         if (typeof window !== 'undefined') {
-          window.location.href = '/auth/login'
+          window.location.href = '/login'
         }
         return Promise.reject(refreshError)
       } finally {

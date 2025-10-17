@@ -19,7 +19,8 @@
 - Next.js 14 (React 18)
 - TypeScript
 - Tailwind CSS
-- Zustand (상태 관리)
+- TanStack Query (React Query 5.x) - 서버 상태 관리
+- Zustand - 클라이언트 상태 관리
 
 ### Backend
 - Node.js 20
@@ -64,10 +65,10 @@ nagukpo/
 ## 개발 로드맵
 
 - [x] 프로젝트 기획
-- [ ] 환경 설정 & 데이터 준비 (Week 1)
-- [ ] 백엔드 개발 (Week 2)
-- [ ] 프론트엔드 개발 (Week 3)
-- [ ] 통합 & 배포 (Week 4)
+- [ ] 환경 설정 & 데이터 준비 (Day 1)
+- [ ] 백엔드 개발 (Day 2)
+- [ ] 프론트엔드 개발 (Day 3)
+- [ ] 통합 & 배포 (Day 4)
 
 ## 라이선스
 

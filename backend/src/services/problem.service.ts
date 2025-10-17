@@ -6,18 +6,48 @@ interface GetProblemsFilter {
   difficulty?: string
   limit?: number
   offset?: number
+  excludeSolved?: boolean
+  userId?: string
 }
 
 /**
  * 문제 목록 조회
  */
 export async function getProblems(filter: GetProblemsFilter) {
-  const { level, type, difficulty, limit = 20, offset = 0 } = filter
+  const { level, type, difficulty, limit = 20, offset = 0, excludeSolved = false, userId } = filter
 
   const where: any = {}
   if (level) where.level = level
   if (type) where.type = type
   if (difficulty) where.difficulty = difficulty
+
+  // 이미 푼 문제 제외
+  if (excludeSolved && userId) {
+    where.NOT = {
+      userProgress: {
+        some: {
+          userId,
+        },
+      },
+    }
+  }
+
+  // 이미 푼 문제 수 계산
+  let solvedCount = 0
+  if (excludeSolved && userId) {
+    const solvedProblems = await prisma.userProgress.groupBy({
+      by: ['problemId'],
+      where: {
+        userId,
+        problem: {
+          level,
+          ...(type && { type }),
+          ...(difficulty && { difficulty }),
+        },
+      },
+    })
+    solvedCount = solvedProblems.length
+  }
 
   const [problems, total] = await Promise.all([
     prisma.problem.findMany({
@@ -29,7 +59,7 @@ export async function getProblems(filter: GetProblemsFilter) {
     prisma.problem.count({ where }),
   ])
 
-  return { problems, total, limit, offset }
+  return { problems, total, limit, offset, solvedCount }
 }
 
 /**

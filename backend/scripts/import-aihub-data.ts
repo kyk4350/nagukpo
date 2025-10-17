@@ -31,15 +31,15 @@ const difficultyMap: Record<string, string> = {
   '하': 'easy',
 }
 
-// 학년 → 레벨 매핑
+// 학년 → 레벨 매핑 (프로젝트 기획에 맞게 조정)
 const gradeLevelMap: Record<string, number> = {
   '초등학교 5학년': 1,
   '초등학교 6학년': 1,
-  '중학교 1학년': 2,
-  '중학교 2학년': 2,
-  '중학교 3학년': 2,
-  '고등학교 1학년': 3,
-  '고등학교 2학년': 3,
+  '중학교 1학년': 1, // Level 1: 중1-2
+  '중학교 2학년': 1,
+  '중학교 3학년': 2, // Level 2: 중3
+  '고등학교 1학년': 3, // Level 3: 고1
+  '고등학교 2학년': 4, // Level 4: 고2-3 (수능 대비)
   '고등학교 3학년': 4,
 }
 
@@ -150,8 +150,31 @@ async function importAIHubData(dataDir: string, limit: number = 100) {
   }
 }
 
-// 실행
-const dataDir = path.join(__dirname, '../../data/raw/middle1')
-const limit = parseInt(process.argv[2] || '100')
+// 여러 폴더를 한번에 import
+async function importMultipleFolders() {
+  const baseDir = '/Users/yugyeong.kim/Documents/gang/공공데이터/extracted'
+  const folders = [
+    { dir: path.join(baseDir, 'middle1'), limit: 50 }, // Level 1 (중1)
+    { dir: path.join(baseDir, 'middle2'), limit: 50 }, // Level 1 (중2)
+    { dir: path.join(baseDir, 'middle3'), limit: 50 }, // Level 2 (중3)
+    { dir: path.join(baseDir, 'high1'), limit: 50 },   // Level 3 (고1)
+    { dir: path.join(baseDir, 'high2'), limit: 50 },   // Level 4 (고2-3, 수능)
+  ]
 
-importAIHubData(dataDir, limit)
+  for (const folder of folders) {
+    console.log(`\n====== ${folder.dir} 처리 중... ======\n`)
+    await importAIHubData(folder.dir, folder.limit)
+  }
+}
+
+// 실행
+const mode = process.argv[2] || 'multi'
+
+if (mode === 'multi') {
+  importMultipleFolders()
+} else {
+  // 단일 폴더 import
+  const dataDir = mode
+  const limit = parseInt(process.argv[3] || '100')
+  importAIHubData(dataDir, limit)
+}

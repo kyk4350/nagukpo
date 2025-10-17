@@ -5,7 +5,7 @@
 - claude.md: Claude 작업 시 핵심 규칙
 - DEVELOPMENT.md: 기술 스택, 아키텍처, 상세 컨벤션
 - PROGRESS.md: 초기 세팅 기록 (완료)
-- TODO.md: 당일 작업 목록
+- TODO.md: 당일 작업 목록 체크
 
 ---
 
@@ -95,9 +95,107 @@ backend/src/
 ## 문서 업데이트
 
 - 새 패키지 → DEVELOPMENT.md
-- 아키텍처 변경 → DEVELOPMENT.md (사유 포함)
+- 아키텍처 변경(사유 포함) → DEVELOPMENT.md
 - 규칙 변경 → claude.md + DEVELOPMENT.md
-- 작업 시작/완료 → TODO.md
+- 작업 시작/완료 체크 → TODO.md
+- 셋업 관련 → SETUP.md
+- 프로젝트 기획 → project-plan.md
+
+---
+
+## 코드 작성 원칙
+
+### 주석 관리
+
+- 코드 수정 시 해당 주석 반드시 함께 업데이트
+
+### 함수 및 컴포넌트
+
+- 하나의 함수/컴포넌트는 하나의 책임만 가짐
+- 함수 길이: 20줄 이내 권장
+- 복잡한 로직은 별도 함수로 분리
+- JSDoc으로 목적, 매개변수, 반환값 명시
+
+### 커스텀 훅
+
+- 반복되는 로직은 커스텀 훅으로 추출
+- 훅 이름은 반드시 use로 시작
+- 여러 컴포넌트에서 공통으로 사용하는 상태 로직은 커스텀 훅으로 분리
+
+### React Query (TanStack Query) 사용 규칙
+
+**필수 사용**:
+
+- 모든 서버 상태 관리는 React Query 사용
+- useState/useEffect로 API 호출 금지
+
+**쿼리 키 네이밍**:
+
+- 배열 형태로 작성: `['problems', { level: 1 }]`
+- 첫 번째 요소: 리소스명 (복수형)
+- 두 번째 요소: 필터/파라미터 객체
+
+**파일 위치**:
+
+- 쿼리/뮤테이션 훅: `frontend/src/hooks/queries/`
+- 쿼리 키 상수: `frontend/src/lib/queryKeys.ts`
+
+**기본 설정**:
+
+```typescript
+// hooks/queries/useProblems.ts
+export function useProblems(params: GetProblemsParams) {
+  return useQuery({
+    queryKey: ["problems", params],
+    queryFn: () => getProblems(params),
+    staleTime: 5 * 60 * 1000, // 5분
+  });
+}
+```
+
+**뮤테이션 후 무효화**:
+
+```typescript
+const mutation = useMutation({
+  mutationFn: submitAnswer,
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["problems"] });
+    queryClient.invalidateQueries({ queryKey: ["progress"] });
+  },
+});
+```
+
+**주의사항**:
+
+- enabled 옵션으로 조건부 실행 제어
+- refetchOnWindowFocus는 기본 false
+- 전역 로딩은 isFetching, 개별 로딩은 isLoading 사용
+- Optimistic Update는 필요한 경우에만 사용
+
+### 조건문 및 반복문
+
+- 중첩 최대 2단계
+- Early return 패턴 적극 활용
+- 복잡한 조건은 의미 있는 변수명으로 추출
+
+### 변수 선언
+
+- const 기본 사용, 재할당 필요 시 let
+- var 금지
+- 명확하고 의미 있는 변수명
+- 매직 넘버는 상수로 선언
+
+### 코드 중복 제거
+
+- DRY 원칙 준수
+- 동일 로직 2번 이상 반복 시 함수 또는 커스텀 훅으로 추출
+- 유사 컴포넌트는 props로 재사용 가능하게 구성
+
+### 테스트 가능한 코드
+
+- 순수 함수 우선 작성
+- 부수 효과 최소화 및 명확히 분리
+- 의존성 주입 고려
 
 ---
 
