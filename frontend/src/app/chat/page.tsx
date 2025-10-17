@@ -1,18 +1,24 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useAuthStore } from '@/stores/authStore'
 import { useSendMessage } from '@/hooks/queries/useChat'
+import { getProblem } from '@/lib/api/problem'
 import type { ChatMessage } from '@/lib/api/chat'
 
 export default function ChatPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const problemId = searchParams.get('problemId')
+
   const { isAuthenticated, _hasHydrated } = useAuthStore()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
+  const [isLoadingProblem, setIsLoadingProblem] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const hasAutoSent = useRef(false)
 
   const sendMessageMutation = useSendMessage()
 
@@ -24,6 +30,61 @@ export default function ChatPage() {
       return
     }
   }, [_hasHydrated, isAuthenticated, router])
+
+  // problemId가 있으면 자동으로 문제 설명 요청
+  useEffect(() => {
+    if (!problemId || !isAuthenticated || hasAutoSent.current) return
+
+    const loadProblemAndAsk = async () => {
+      setIsLoadingProblem(true)
+      hasAutoSent.current = true
+
+      try {
+        const problem = await getProblem(problemId)
+
+        // 문제 정보를 포함한 질문 생성
+        const questionText = `다음 문제를 틀렸는데, 왜 틀렸는지 설명해주세요:
+
+[문제]
+${problem.question}
+
+${problem.passage ? `[지문]\n${problem.passage}\n\n` : ''}${problem.options ? `[선택지]\n${problem.options.map((opt, idx) => `${idx + 1}. ${opt}`).join('\n')}\n\n` : ''}[정답]
+${problem.answer}
+
+${problem.explanation ? `[해설]\n${problem.explanation}` : ''}`
+
+        const userMessage: ChatMessage = {
+          role: 'user',
+          content: questionText,
+        }
+
+        setMessages([userMessage])
+
+        // 자동으로 메시지 전송
+        const response = await sendMessageMutation.mutateAsync({
+          message: questionText,
+          conversationHistory: [],
+        })
+
+        const assistantMessage: ChatMessage = {
+          role: 'assistant',
+          content: response.message,
+        }
+        setMessages([userMessage, assistantMessage])
+      } catch (error) {
+        console.error('문제 정보 불러오기 실패:', error)
+        const errorMessage: ChatMessage = {
+          role: 'assistant',
+          content: '문제 정보를 불러오는데 실패했어요. 다시 시도해주세요.',
+        }
+        setMessages([errorMessage])
+      } finally {
+        setIsLoadingProblem(false)
+      }
+    }
+
+    loadProblemAndAsk()
+  }, [problemId, isAuthenticated, sendMessageMutation])
 
   // 메시지가 추가되면 스크롤을 맨 아래로
   useEffect(() => {
@@ -92,7 +153,19 @@ export default function ChatPage() {
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto px-4 py-6">
         <div className="max-w-4xl mx-auto space-y-4">
-          {messages.length === 0 ? (
+          {isLoadingProblem ? (
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">📚</div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                문제 정보를 불러오는 중...
+              </h2>
+              <div className="flex justify-center space-x-2 mt-4">
+                <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"></div>
+                <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+              </div>
+            </div>
+          ) : messages.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-6xl mb-4">💬</div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
