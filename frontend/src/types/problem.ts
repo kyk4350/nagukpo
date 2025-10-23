@@ -32,6 +32,24 @@ export interface SubmitAnswerResponse {
   userProgress: any
 }
 
+export interface RecentProgressItem {
+  id: string
+  userId: string
+  problemId: string
+  isCorrect: boolean
+  userAnswer: string
+  attemptCount: number
+  timeSpent: number | null
+  attemptedAt: string
+  problem: {
+    id: string
+    type: string
+    difficulty: 'easy' | 'medium' | 'hard'
+    level: number
+    question: string
+  }
+}
+
 export interface UserProgress {
   totalAttempts: number
   correctAttempts: number
@@ -42,7 +60,27 @@ export interface UserProgress {
     solved_count: number
     total_count: number
   }>
-  recentProgress: any[]
+  recentProgress: RecentProgressItem[]
+}
+
+export interface StatsByType {
+  type: string
+  total_attempts: number
+  correct_attempts: number
+  accuracy: number
+}
+
+export interface StatsByDifficulty {
+  difficulty: string
+  total_attempts: number
+  correct_attempts: number
+  accuracy: number
+}
+
+export interface DailyActivity {
+  date: string
+  total_problems: number
+  correct_problems: number
 }
 
 export interface UserStats {
@@ -53,8 +91,9 @@ export interface UserStats {
     streakDays: number
     lastStreakDate: string | null
   }
-  statsByType: any[]
-  statsByDifficulty: any[]
+  statsByType: StatsByType[]
+  statsByDifficulty: StatsByDifficulty[]
+  dailyActivity: DailyActivity[]
 }
 
 export interface GetProblemsParams {

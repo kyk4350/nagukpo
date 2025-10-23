@@ -22,4 +22,10 @@ export const queryKeys = {
     summary: ['progress', 'summary'] as const,
     byLevel: (level: number) => ['progress', { level }] as const,
   },
+
+  // 통계 관련
+  stats: {
+    all: ['stats'] as const,
+    summary: ['stats', 'summary'] as const,
+  },
 }

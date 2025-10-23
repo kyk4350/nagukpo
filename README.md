@@ -16,6 +16,7 @@
 ## 기술 스택
 
 ### Frontend
+
 - Next.js 14 (React 18)
 - TypeScript
 - Tailwind CSS
@@ -23,6 +24,7 @@
 - Zustand - 클라이언트 상태 관리
 
 ### Backend
+
 - Node.js 20
 - Express.js
 - TypeScript
@@ -31,6 +33,7 @@
 - Prisma ORM
 
 ### AI/ML
+
 - OpenAI GPT-4
 - LangChain (RAG)
 - Pinecone (Vector DB)
@@ -38,7 +41,9 @@
 ## 데이터 출처
 
 ### 필수 공공데이터 (⭐)
+
 - **AI Hub - 국어 교과 지문형 문제 데이터** (10,270건)
+
   - 학년별 국어 문제 (지문 + 문항 + 답 + 해설)
   - 교육과정 매핑, 상세 해설 포함
   - URL: https://www.aihub.or.kr/
@@ -49,6 +54,7 @@
   - URL: https://stdict.korean.go.kr/openapi/
 
 ### 추가 공공데이터
+
 - 한국어기초사전 API (쉬운 설명 버전 제공)
 - 우리말샘 API (신조어, 생활 어휘)
 
@@ -61,18 +67,6 @@ nagukpo/
 ├── shared/            # 공유 타입 및 유틸리티
 └── docs/              # 프로젝트 문서
 ```
-
-## 개발 로드맵
-
-- [x] 프로젝트 기획
-- [ ] 환경 설정 & 데이터 준비 (Day 1)
-- [ ] 백엔드 개발 (Day 2)
-- [ ] 프론트엔드 개발 (Day 3)
-- [ ] 통합 & 배포 (Day 4)
-
-## 라이선스
-
-MIT
 
 ## 문의
 

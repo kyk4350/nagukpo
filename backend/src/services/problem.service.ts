@@ -1,4 +1,5 @@
 import prisma from '../utils/prisma'
+import { checkAndGrantAchievements } from './achievement.service'
 
 interface GetProblemsFilter {
   level?: number
@@ -49,17 +50,34 @@ export async function getProblems(filter: GetProblemsFilter) {
     solvedCount = solvedProblems.length
   }
 
-  const [problems, total] = await Promise.all([
-    prisma.problem.findMany({
-      where,
-      take: limit,
-      skip: offset,
-      orderBy: { createdAt: 'desc' },
-    }),
-    prisma.problem.count({ where }),
-  ])
+  // 랜덤 정렬을 위해 먼저 모든 ID를 가져옴
+  const allProblemIds = await prisma.problem.findMany({
+    where,
+    select: { id: true },
+  })
 
-  return { problems, total, limit, offset, solvedCount }
+  // ID를 랜덤으로 섞음
+  const shuffledIds = allProblemIds
+    .map((p) => p.id)
+    .sort(() => Math.random() - 0.5)
+    .slice(offset, offset + limit)
+
+  // 섞인 순서대로 문제를 가져옴
+  const problems = await prisma.problem.findMany({
+    where: {
+      ...where,
+      id: { in: shuffledIds },
+    },
+  })
+
+  // 섞인 순서 유지
+  const orderedProblems = shuffledIds
+    .map((id) => problems.find((p) => p.id === id))
+    .filter((p): p is NonNullable<typeof p> => p !== undefined)
+
+  const total = allProblemIds.length
+
+  return { problems: orderedProblems, total, limit, offset, solvedCount }
 }
 
 /**
@@ -140,6 +158,11 @@ export async function submitAnswer(
       })
     }
   }
+
+  // 배지 획득 확인 (비동기로 실행, 결과는 기다리지 않음)
+  checkAndGrantAchievements(userId).catch((err) => {
+    console.error('배지 획득 확인 중 오류:', err)
+  })
 
   return {
     isCorrect,

@@ -5,6 +5,7 @@ import {
   getProblemController,
   submitAnswerController,
 } from '../controllers/problem.controller'
+import { generateHint } from '../controllers/hint.controller'
 
 const router = Router()
 
@@ -16,5 +17,8 @@ router.get('/:id', authMiddleware, getProblemController)
 
 // 답안 제출 (인증 필요)
 router.post('/:id/submit', authMiddleware, submitAnswerController)
+
+// 힌트 생성 (인증 필요)
+router.post('/:problemId/hint', authMiddleware, generateHint)
 
 export default router

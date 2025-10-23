@@ -10,6 +10,21 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// 문제 유형 enum
+enum ProblemType {
+  reading
+  vocabulary
+  grammar
+  writing
+}
+
+// 난이도 enum
+enum Difficulty {
+  easy
+  medium
+  hard
+}
+
 model User {
   id               String   @id @default(cuid())
   username         String   @unique
@@ -65,10 +80,10 @@ model PasswordHistory {
 }
 
 model Problem {
-  id               String   @id @default(cuid())
-  type             String   // vocabulary, grammar, reading, writing
-  category         String?  // synonym, antonym, main_idea, etc.
-  difficulty       String   // easy, medium, hard
+  id               String      @id @default(cuid())
+  type             ProblemType // vocabulary, grammar, reading, writing
+  category         String?     // synonym, antonym, main_idea, etc.
+  difficulty       Difficulty  // easy, medium, hard
   level            Int      // 1, 2, 3, 4
   subLevel         String?  @map("sub_level") // 4-1, 4-2, 4-3, 4-4
   question         String   @db.Text

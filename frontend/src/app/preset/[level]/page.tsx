@@ -7,6 +7,9 @@ import { useProblems } from '@/hooks/queries/useProblems'
 import { useSubmitAnswer } from '@/hooks/queries/useSubmitAnswer'
 import { queryClient } from '@/lib/queryClient'
 import { queryKeys } from '@/lib/queryKeys'
+import StudySummaryModal from '@/components/StudySummaryModal'
+import HintPanel from '@/components/HintPanel'
+import { getHint } from '@/lib/api/hint'
 import type { SubmitAnswerResponse } from '@/types/problem'
 
 export default function LevelPage() {
@@ -22,6 +25,26 @@ export default function LevelPage() {
   const [submitted, setSubmitted] = useState(false)
   const [result, setResult] = useState<SubmitAnswerResponse | null>(null)
   const [startTime, setStartTime] = useState<number>(Date.now())
+  const [showSummaryModal, setShowSummaryModal] = useState(false)
+
+  // 힌트 패널 상태
+  const [showHintPanel, setShowHintPanel] = useState(false)
+  const [hints, setHints] = useState<{
+    level1: string | null
+    level2: string | null
+    level3: string | null
+  }>({ level1: null, level2: null, level3: null })
+  const [hintLoading, setHintLoading] = useState(false)
+
+  // 세션 통계 추적
+  const [sessionStats, setSessionStats] = useState<Array<{
+    isCorrect: boolean
+    type: string
+    difficulty: string
+    level: number
+    timeSpent: number
+    points: number
+  }>>([])
 
   const problems = data?.problems || []
   const totalProblems = (data?.total || 0) + (data?.solvedCount || 0)
@@ -50,7 +73,26 @@ export default function LevelPage() {
         onSuccess: (response) => {
           setResult(response)
           setSubmitted(true)
-          // refetch 제거 - 다음 문제로 넘어갈 때만 갱신
+
+          // 세션 통계에 추가
+          const pointsMap: Record<string, number> = {
+            easy: 10,
+            medium: 20,
+            hard: 30,
+          }
+          const points = response.isCorrect ? (pointsMap[currentProblem.difficulty] || 10) : 0
+
+          setSessionStats((prev) => [
+            ...prev,
+            {
+              isCorrect: response.isCorrect,
+              type: currentProblem.type,
+              difficulty: currentProblem.difficulty,
+              level: currentProblem.level,
+              timeSpent,
+              points,
+            },
+          ])
         },
         onError: (error) => {
           console.error('답안 제출 실패:', error)
@@ -67,6 +109,9 @@ export default function LevelPage() {
       setSelectedAnswer('')
       setSubmitted(false)
       setResult(null)
+      // 힌트 초기화
+      setHints({ level1: null, level2: null, level3: null })
+      setShowHintPanel(false)
 
       // 진도와 통계만 업데이트 (문제 목록은 그대로 유지)
       queryClient.invalidateQueries({ queryKey: queryKeys.progress.all })
@@ -77,6 +122,87 @@ export default function LevelPage() {
       queryClient.invalidateQueries({ queryKey: queryKeys.progress.all })
       queryClient.invalidateQueries({ queryKey: queryKeys.users.current })
       router.push('/preset')
+    }
+  }
+
+  // 세션 통계를 요약 데이터로 변환
+  const getSessionSummary = () => {
+    if (sessionStats.length === 0) {
+      return null
+    }
+
+    const totalProblems = sessionStats.length
+    const correctProblems = sessionStats.filter((s) => s.isCorrect).length
+    const accuracy = totalProblems > 0 ? Math.round((correctProblems / totalProblems) * 100) : 0
+    const pointsEarned = sessionStats.reduce((sum, s) => sum + s.points, 0)
+    const totalTimeSpent = sessionStats.reduce((sum, s) => sum + s.timeSpent, 0)
+    const avgTimePerProblem = totalProblems > 0 ? Math.round(totalTimeSpent / totalProblems) : 0
+
+    // 유형별 통계
+    const typeStats = sessionStats.reduce((acc, s) => {
+      if (!acc[s.type]) {
+        acc[s.type] = { total: 0, correct: 0 }
+      }
+      acc[s.type].total++
+      if (s.isCorrect) acc[s.type].correct++
+      return acc
+    }, {} as Record<string, { total: number; correct: number }>)
+
+    // 난이도별 통계
+    const difficultyStats = sessionStats.reduce((acc, s) => {
+      if (!acc[s.difficulty]) {
+        acc[s.difficulty] = { total: 0, correct: 0 }
+      }
+      acc[s.difficulty].total++
+      if (s.isCorrect) acc[s.difficulty].correct++
+      return acc
+    }, {} as Record<string, { total: number; correct: number }>)
+
+    return {
+      totalProblems,
+      correctProblems,
+      accuracy,
+      pointsEarned,
+      totalTimeSpent,
+      avgTimePerProblem,
+      typeStats,
+      difficultyStats,
+    }
+  }
+
+  const handleFinishStudy = () => {
+    // 세션 통계가 없으면 경고
+    if (sessionStats.length === 0) {
+      alert('아직 풀이한 문제가 없습니다.')
+      return
+    }
+    // 모달 열기
+    setShowSummaryModal(true)
+  }
+
+  const handleCloseSummary = () => {
+    setShowSummaryModal(false)
+    // 모든 쿼리 갱신 (대시보드 데이터 업데이트)
+    queryClient.invalidateQueries({ queryKey: queryKeys.progress.all })
+    queryClient.invalidateQueries({ queryKey: queryKeys.stats.all })
+    queryClient.invalidateQueries({ queryKey: queryKeys.users.current })
+  }
+
+  const handleRequestHint = async (level: 1 | 2 | 3) => {
+    if (!currentProblem) return
+
+    setHintLoading(true)
+    try {
+      const result = await getHint(currentProblem.id, level)
+      setHints((prev) => ({
+        ...prev,
+        [`level${level}`]: result.hint,
+      }))
+    } catch (error) {
+      console.error('힌트 생성 실패:', error)
+      alert('힌트를 생성하는데 실패했습니다.')
+    } finally {
+      setHintLoading(false)
     }
   }
 
@@ -106,9 +232,17 @@ export default function LevelPage() {
       <div className="max-w-4xl mx-auto px-4">
         {/* Header */}
         <div className="mb-6">
-          <Link href="/preset" className="text-blue-600 hover:underline mb-4 inline-block">
-            ← 레벨 선택으로
-          </Link>
+          <div className="flex justify-between items-center mb-4">
+            <Link href="/preset" className="text-blue-600 hover:underline inline-block">
+              ← 레벨 선택으로
+            </Link>
+            <button
+              onClick={handleFinishStudy}
+              className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all shadow-md"
+            >
+              📊 학습 종료
+            </button>
+          </div>
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold text-gray-900">Level {level}</h1>
             <span className="text-gray-600">
@@ -125,8 +259,8 @@ export default function LevelPage() {
 
         {/* Problem Card */}
         <div className="bg-white rounded-lg shadow-lg p-8">
-          {/* Difficulty Badge */}
-          <div className="mb-4">
+          {/* Difficulty Badge and Hint Button */}
+          <div className="mb-4 flex justify-between items-center">
             <span
               className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
                 currentProblem.difficulty === 'easy'
@@ -138,6 +272,12 @@ export default function LevelPage() {
             >
               {currentProblem.difficulty === 'easy' ? '쉬움' : currentProblem.difficulty === 'medium' ? '보통' : '어려움'}
             </span>
+            <button
+              onClick={() => setShowHintPanel(true)}
+              className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg hover:from-amber-600 hover:to-orange-600 transition-all shadow-md font-medium"
+            >
+              💡 힌트
+            </button>
           </div>
 
           {/* Passage */}
@@ -255,6 +395,22 @@ export default function LevelPage() {
             )}
           </div>
         </div>
+
+        {/* Study Summary Modal */}
+        <StudySummaryModal
+          isOpen={showSummaryModal}
+          onClose={handleCloseSummary}
+          data={getSessionSummary()}
+        />
+
+        {/* Hint Panel */}
+        <HintPanel
+          isOpen={showHintPanel}
+          onClose={() => setShowHintPanel(false)}
+          onRequestHint={handleRequestHint}
+          hints={hints}
+          loading={hintLoading}
+        />
       </div>
     </div>
   )

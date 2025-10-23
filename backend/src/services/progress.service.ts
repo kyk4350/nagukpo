@@ -40,7 +40,7 @@ export async function getUserProgress(userId: string) {
     total_count: Number(item.total_count),
   }))
 
-  // 최근 풀이 기록
+  // 최근 풀이 기록 (최근 5개)
   const recentProgress = await prisma.userProgress.findMany({
     where: { userId },
     include: {
@@ -55,7 +55,7 @@ export async function getUserProgress(userId: string) {
       },
     },
     orderBy: { attemptedAt: 'desc' },
-    take: 10,
+    take: 5,
   })
 
   return {
@@ -128,14 +128,130 @@ export async function getUserStats(userId: string) {
     accuracy: Number(item.accuracy),
   }))
 
+  // 일주일간 학습 기록
+  const sevenDaysAgo = new Date()
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
+  const dailyActivityRaw: any[] = await prisma.$queryRaw`
+    SELECT
+      DATE(attempted_at) as date,
+      COUNT(*) as total_problems,
+      SUM(CASE WHEN is_correct THEN 1 ELSE 0 END) as correct_problems
+    FROM user_progress
+    WHERE user_id = ${userId}
+      AND attempted_at >= ${sevenDaysAgo}
+    GROUP BY DATE(attempted_at)
+    ORDER BY date ASC
+  `
+
+  // BigInt를 Number로 변환
+  const dailyActivity = dailyActivityRaw.map((item) => ({
+    date: item.date,
+    total_problems: Number(item.total_problems),
+    correct_problems: Number(item.correct_problems),
+  }))
+
   return {
     user,
     statsByType,
     statsByDifficulty,
+    dailyActivity,
+  }
+}
+
+/**
+ * 오늘 학습 요약 조회
+ */
+export async function getTodayStudySummary(userId: string) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+
+  // 오늘 푼 문제들
+  const todayProgress = await prisma.userProgress.findMany({
+    where: {
+      userId,
+      attemptedAt: {
+        gte: today,
+        lt: tomorrow,
+      },
+    },
+    include: {
+      problem: {
+        select: {
+          type: true,
+          difficulty: true,
+          level: true,
+        },
+      },
+    },
+  })
+
+  // 전체 통계
+  const totalProblems = todayProgress.length
+  const correctProblems = todayProgress.filter((p) => p.isCorrect).length
+  const accuracy = totalProblems > 0 ? Math.round((correctProblems / totalProblems) * 100) : 0
+
+  // 획득한 포인트 계산
+  const pointsMap: Record<string, number> = {
+    easy: 10,
+    medium: 20,
+    hard: 30,
+  }
+
+  const pointsEarned = todayProgress
+    .filter((p) => p.isCorrect)
+    .reduce((sum, p) => sum + (pointsMap[p.problem.difficulty] || 10), 0)
+
+  // 소요 시간 (분)
+  const totalTimeSpent = todayProgress.reduce((sum, p) => sum + (p.timeSpent || 0), 0)
+  const avgTimePerProblem = totalProblems > 0 ? Math.round(totalTimeSpent / totalProblems) : 0
+
+  // 유형별 통계
+  const typeStats = todayProgress.reduce((acc, p) => {
+    const type = p.problem.type
+    if (!acc[type]) {
+      acc[type] = { total: 0, correct: 0 }
+    }
+    acc[type].total++
+    if (p.isCorrect) acc[type].correct++
+    return acc
+  }, {} as Record<string, { total: number; correct: number }>)
+
+  // 난이도별 통계
+  const difficultyStats = todayProgress.reduce((acc, p) => {
+    const difficulty = p.problem.difficulty
+    if (!acc[difficulty]) {
+      acc[difficulty] = { total: 0, correct: 0 }
+    }
+    acc[difficulty].total++
+    if (p.isCorrect) acc[difficulty].correct++
+    return acc
+  }, {} as Record<string, { total: number; correct: number }>)
+
+  return {
+    totalProblems,
+    correctProblems,
+    accuracy,
+    pointsEarned,
+    totalTimeSpent,
+    avgTimePerProblem,
+    typeStats,
+    difficultyStats,
+    problems: todayProgress.map((p) => ({
+      isCorrect: p.isCorrect,
+      type: p.problem.type,
+      difficulty: p.problem.difficulty,
+      level: p.problem.level,
+      timeSpent: p.timeSpent,
+    })),
   }
 }
 
 export default {
   getUserProgress,
   getUserStats,
+  getTodayStudySummary,
 }

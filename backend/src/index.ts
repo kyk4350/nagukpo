@@ -10,8 +10,9 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler.middlew
 import authRoutes from './routes/auth.routes'
 import problemRoutes from './routes/problem.routes'
 import chatRoutes from './routes/chat.routes'
+import achievementRoutes from './routes/achievement.routes'
 import { authMiddleware } from './middleware/auth.middleware'
-import { getProgressController, getStatsController } from './controllers/progress.controller'
+import { getProgressController, getStatsController, getTodaySummaryController } from './controllers/progress.controller'
 import authService from './services/auth.service'
 
 // Load environment variables
@@ -65,7 +66,9 @@ app.get('/api/v1', (req, res) => {
 app.use('/api/v1/auth', authRoutes)
 app.use('/api/v1/problems', problemRoutes)
 app.use('/api/v1/chat', chatRoutes)
+app.use('/api/v1/achievements', achievementRoutes)
 app.get('/api/v1/progress', authMiddleware, getProgressController)
+app.get('/api/v1/progress/today', authMiddleware, getTodaySummaryController)
 app.get('/api/v1/stats', authMiddleware, getStatsController)
 
 // 404 handler
