@@ -1,6 +1,7 @@
 import OpenAI from 'openai'
 import prisma from '../utils/prisma'
 import logger from '../utils/logger'
+import { generateAnswerWithRAG, explainProblem } from './rag.service'
 
 // OpenAI 클라이언트 초기화
 const openai = new OpenAI({
@@ -47,6 +48,9 @@ export interface ChatRequest {
   userId: string
   message: string
   conversationHistory?: ChatMessage[]
+  problemId?: string // 특정 문제에 대한 질문인 경우
+  userAnswer?: string // 사용자가 선택한 답
+  useRAG?: boolean // RAG 사용 여부 (기본: true)
 }
 
 export interface ChatResponse {
@@ -58,34 +62,63 @@ export interface ChatResponse {
  * AI 챗봇과 대화 처리
  */
 export async function chat(request: ChatRequest): Promise<ChatResponse> {
-  const { userId, message, conversationHistory = [] } = request
+  const {
+    userId,
+    message,
+    conversationHistory = [],
+    problemId,
+    userAnswer,
+    useRAG = true,
+  } = request
 
   try {
-    // 대화 히스토리 구성
-    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-      { role: 'system', content: SYSTEM_PROMPT },
-      ...conversationHistory.map((msg) => ({
-        role: msg.role as 'user' | 'assistant',
-        content: msg.content,
-      })),
-      { role: 'user', content: message },
-    ]
+    let assistantMessage: string
 
-    // OpenAI API 호출
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4',
-      messages,
-      temperature: 0.7,
-      max_tokens: 1500,
-    })
+    // 1. 특정 문제에 대한 설명 요청인 경우
+    if (problemId) {
+      logger.info(`문제 설명 요청: problemId=${problemId}, userAnswer=${userAnswer}`)
+      assistantMessage = await explainProblem(problemId, userAnswer)
+    }
+    // 2. RAG를 사용하는 일반 대화
+    else if (useRAG) {
+      logger.info('RAG 기반 대화 처리')
+      assistantMessage = await generateAnswerWithRAG(
+        message,
+        conversationHistory.map((msg) => ({
+          role: msg.role,
+          content: msg.content,
+        }))
+      )
+    }
+    // 3. 기존 방식 (RAG 없이)
+    else {
+      logger.info('일반 GPT-4 대화 처리')
+      const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+        { role: 'system', content: SYSTEM_PROMPT },
+        ...conversationHistory.map((msg) => ({
+          role: msg.role as 'user' | 'assistant',
+          content: msg.content,
+        })),
+        { role: 'user', content: message },
+      ]
 
-    let assistantMessage = completion.choices[0]?.message?.content || '죄송해요, 응답을 생성하지 못했어요.'
-    const finishReason = completion.choices[0]?.finish_reason
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4',
+        messages,
+        temperature: 0.7,
+        max_tokens: 1500,
+      })
 
-    // 토큰 제한으로 응답이 잘린 경우 안내 메시지 추가
-    if (finishReason === 'length') {
-      assistantMessage += '\n\n💬 답변이 길어서 여기서 끝났어요. "계속 설명해줘"라고 말씀하시면 이어서 설명해드릴게요!'
-      logger.warn(`Chat response truncated due to token limit for user: ${userId}`)
+      assistantMessage =
+        completion.choices[0]?.message?.content || '죄송해요, 응답을 생성하지 못했어요.'
+      const finishReason = completion.choices[0]?.finish_reason
+
+      // 토큰 제한으로 응답이 잘린 경우 안내 메시지 추가
+      if (finishReason === 'length') {
+        assistantMessage +=
+          '\n\n💬 답변이 길어서 여기서 끝났어요. "계속 설명해줘"라고 말씀하시면 이어서 설명해드릴게요!'
+        logger.warn(`Chat response truncated due to token limit for user: ${userId}`)
+      }
     }
 
     // 대화 히스토리에 추가
