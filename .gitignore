@@ -59,3 +59,7 @@ data/raw/
 *.key
 *.pem
 secrets/
+
+# Documentation (except README.md)
+*.md
+!README.md
